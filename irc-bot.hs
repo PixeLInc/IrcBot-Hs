@@ -1,4 +1,5 @@
 import Data.List
+import Data.List.Split
 import System.Exit
 import Network.Socket
 import Network.BSD
@@ -14,8 +15,9 @@ import Control.Exception
 
 server = "irc.freenode.org"
 port = "6667"
-chan = "#y32"
 nick = "hnng"
+
+channels = ["#y32", "#ar1a"]
 
 data Bot = Bot { socket :: Handle, startTime :: ClockTime }
 type Net = ReaderT Bot IO
@@ -52,7 +54,8 @@ run :: Net()
 run = do
   write "NICK" nick
   write "USER" (nick ++ " 0 * :hnng")
-  write "JOIN" chan
+  forM_ channels $ \channel -> do
+    write "JOIN" channel
   asks Main.socket >>= Main.listen
 
 write :: String -> String -> Net()
@@ -64,22 +67,25 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
-eval :: String -> Net()
-eval "!quit" = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
-eval "!uptime" = uptime >>= privmsg
-eval x | "!say " `isPrefixOf` x = privmsg (drop 5 x)
-eval x | "!test" `isPrefixOf` x = privmsg x
-eval x | "!about" `isPrefixOf` x = privmsg "Haskell Botto by PixaL kthxbye"
-eval x | x `containsIgnoreCase` "yeet" = privmsg "YEET"
-eval x | x `containsIgnoreCase` "thanos car" = privmsg "THANOS CAR"
-eval x | x `containsIgnoreCase` "COCKS" = privmsg "DICKS."
-eval x | x `containsIgnoreCase` "gay" = privmsg "gay"
+eval :: [[Char]] -> Net()
+eval [] = return ()
+eval [_] = return ()
+eval [channel, text]
+  | "!quit" `isPrefixOf` text = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
+  |"!uptime" `isPrefixOf` text = uptime >>= privmsg channel
+  | "!say " `isPrefixOf` text = privmsg channel (drop 5 text)
+  | "!test" `isPrefixOf` text = privmsg channel text
+  | "!about" `isPrefixOf` text = privmsg channel "Haskell Botto by PixaL kthxbye"
+  | text `containsIgnoreCase` "yeet" = privmsg channel "YEET"
+  | text `containsIgnoreCase` "thanos car" = privmsg channel "THANOS CAR"
+  | text `containsIgnoreCase` "COCKS" = privmsg channel "DICKS."
+  | text `containsIgnoreCase` "gay" = privmsg channel "gay"
+  | otherwise = return ()
 -- makeshift "on join event"
 -- eval x | ("JOIN " ++ chan) `isInfixOf` x = privmsg "YEET."
-eval _ = return ()
 
-privmsg :: String -> Net()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
+privmsg :: String -> String -> Net()
+privmsg c s = write "PRIVMSG" ("#" ++ c ++ " :" ++ s)
 
 containsIgnoreCase :: String -> String -> Bool
 containsIgnoreCase s word = isInfixOf (map toLower word) (map toLower s)
@@ -88,10 +94,10 @@ listen :: Handle -> Net()
 listen h = forever $ do
   s <- init `fmap` io (hGetLine h)
   io $ putStrLn s
-  if ping s then pong s else eval (clean s)
+  if ping s then pong s else eval (splitOn " :" (clean s))
  where
    forever a = a >> forever a
-   clean = drop 1 . dropWhile(/= ':') . drop 1
+   clean = drop 1 . dropWhile(/= '#') . drop 1
    ping x = "PING :" `isPrefixOf` x
    pong x = write "PONG" (':' : drop 6 x)
 
