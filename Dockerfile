@@ -4,6 +4,6 @@ ADD . /opt/irc_bot
 WORKDIR /opt/irc_bot
 
 RUN cabal update && \
-    cabal install network old-time split
+    cabal install network time split
 
 CMD ["runhaskell", "irc-bot.hs"]
