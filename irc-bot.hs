@@ -68,8 +68,8 @@ io = liftIO
 
 eval :: [[Char]] -> Net()
 eval [] = return ()
-eval [_] = return ()
-eval [channel, text]
+eval (_:[]) = return ()
+eval (channel:text:[])
   | "!quit" `isPrefixOf` text = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
   |"!uptime" `isPrefixOf` text = uptime >>= privmsg channel
   | "!say " `isPrefixOf` text = privmsg channel (drop 5 text)
@@ -80,6 +80,7 @@ eval [channel, text]
   | text `containsIgnoreCase` "COCKS" = privmsg channel "DICKS."
   | text `containsIgnoreCase` "gay" = privmsg channel "gay"
   | otherwise = return ()
+eval (_:_:_) = return ()
 -- makeshift "on join event"
 -- eval x | ("JOIN " ++ chan) `isInfixOf` x = privmsg "YEET."
 
