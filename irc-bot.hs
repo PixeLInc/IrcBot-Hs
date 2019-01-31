@@ -6,7 +6,8 @@ import Text.Printf
 import Data.Char (toLower)
 
 import System.IO
-import System.Time
+import Data.Time
+import Data.Time.Clock
 
 import Control.Arrow
 import Control.Monad.Reader
@@ -18,7 +19,7 @@ nick = "hnng"
 
 channels = ["#y32", "#ar1a"]
 
-data Bot = Bot { socket :: Handle, startTime :: ClockTime }
+data Bot = Bot { socket :: Handle, startTime :: UTCTime }
 type Net = ReaderT Bot IO
 
 main :: IO()
@@ -29,7 +30,7 @@ main = bracket Main.connect disconnect loop
 
 connect :: IO Bot
 connect = notify $ do
-  clock <- getClockTime
+  clock <- getCurrentTime
   let hints = defaultHints { addrSocketType = Stream }
   addr:_ <- getAddrInfo (Just hints) (Just server) (Just port)
 
@@ -101,11 +102,11 @@ listen h = forever $ do
 
 uptime :: Net String
 uptime = do
-  now <- io getClockTime
+  now <- io getCurrentTime
   zero <- asks startTime
-  return . pretty $ diffClockTimes now zero
+  return . pretty $ diffUTCTime now zero
 
-pretty :: TimeDiff -> String
+pretty :: NominalDiffTime -> String
 pretty td =
   unwords $ map (uncurry (++) . first show) $
   if null diffs then [(0,"s")] else diffs
@@ -113,5 +114,5 @@ pretty td =
                                     in (tot',(sec',typ):acc)
         metrics = [(86400,"d"),(3600,"h"),(60,"m"),(1,"s")]
         diffs = filter ((/= 0) . fst) $ reverse $ snd $
-                foldl' merge (tdSec td,[]) metrics
+          foldl' merge (round (realToFrac td),[]) metrics
 
