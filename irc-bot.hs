@@ -2,7 +2,6 @@ import Data.List
 import Data.List.Split
 import System.Exit
 import Network.Socket
-import Network.BSD
 import Text.Printf
 import Data.Char (toLower)
 
@@ -31,14 +30,13 @@ main = bracket Main.connect disconnect loop
 connect :: IO Bot
 connect = notify $ do
   clock <- getClockTime
-  proto <- getProtocolNumber "tcp"
-  addrsInfo <- getAddrInfo Nothing (Just server) (Just port)
-  let host = head addrsInfo
+  let hints = defaultHints { addrSocketType = Stream }
+  addr:_ <- getAddrInfo (Just hints) (Just server) (Just port)
 
   printf "\nConnection Starting: %s : %s\n" server port
 
-  sock <- Network.Socket.socket (addrFamily host) Stream proto
-  Network.Socket.connect sock (addrAddress host)
+  sock <- Network.Socket.socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+  Network.Socket.connect sock (addrAddress addr)
   printf "Connected.\n"
   handle <- socketToHandle sock ReadWriteMode
 
