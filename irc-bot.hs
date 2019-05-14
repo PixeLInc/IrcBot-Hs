@@ -71,9 +71,9 @@ io = liftIO
 eval :: [[Char]] -> Net()
 eval [] = return ()
 eval (_:[]) = return ()
-eval (channel:text:[])
-  | "!quit" `isPrefixOf` text = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
-  |"!uptime" `isPrefixOf` text = uptime >>= privmsg channel
+eval (nick:channel:text:[])
+  | "!quit" `isPrefixOf` text = quit nick channel
+  | "!uptime" `isPrefixOf` text = uptime >>= privmsg channel
   | "!say " `isPrefixOf` text = privmsg channel (drop 5 text)
   | "!test" `isPrefixOf` text = privmsg channel text
   | "!about" `isPrefixOf` text = privmsg channel "Haskell Botto by PixaL kthxbye"
@@ -87,6 +87,12 @@ eval (_:_:_) = return ()
 -- makeshift "on join event"
 -- eval x | ("JOIN " ++ chan) `isInfixOf` x = privmsg "YEET."
 
+quit :: String -> String -> Net()
+quit n c
+  | n == "PixeLInc"    = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
+  | n == "godlyelixir" = privmsg c "pike pike pike"
+  | otherwise          = privmsg c "Fuck off retard"
+
 privmsg :: String -> String -> Net()
 privmsg c s = write "PRIVMSG" ("#" ++ c ++ " :" ++ s)
 
@@ -97,10 +103,10 @@ listen :: Handle -> Net()
 listen h = forever $ do
   s <- init `fmap` io (hGetLine h)
   io $ putStrLn s
-  if ping s then pong s else eval (splitOn " :" (clean s)) ++ [nick]
+  if ping s then pong s else eval ([nick(s)] ++ (splitOn " :" (clean s)))
  where
    forever a = a >> forever a
-   nick = drop 1 . head . splitOn "!~"
+   nick s = drop 1 (head(splitOn "!~" s))
    clean = drop 1 . dropWhile(/= '#') . drop 1
    ping x = "PING :" `isPrefixOf` x
    pong x = write "PONG" (':' : drop 6 x)
