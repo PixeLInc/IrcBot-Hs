@@ -6,6 +6,7 @@ import Text.Printf
 import Data.Char (toLower)
 
 import System.IO
+import Data.IORef
 import Data.Time
 import Data.Time.Clock
 
@@ -20,6 +21,7 @@ nick = "hnng"
 channels = ["#y32", "#ar1a"]
 
 data Bot = Bot { socket :: Handle, startTime :: UTCTime }
+
 type Net = ReaderT Bot IO
 
 main :: IO()
@@ -76,6 +78,7 @@ eval (channel:text:[])
   | "!test" `isPrefixOf` text = privmsg channel text
   | "!about" `isPrefixOf` text = privmsg channel "Haskell Botto by PixaL kthxbye"
   | text `containsIgnoreCase` "yeet" = privmsg channel "YEET"
+  | text `containsIgnoreCase` "nigga toilet" = privmsg channel "NIGGA TOILET"
   | text `containsIgnoreCase` "thanos car" = privmsg channel "THANOS CAR"
   | text `containsIgnoreCase` "COCKS" = privmsg channel "DICKS."
   | text `containsIgnoreCase` "gay" = privmsg channel "gay"
@@ -94,9 +97,10 @@ listen :: Handle -> Net()
 listen h = forever $ do
   s <- init `fmap` io (hGetLine h)
   io $ putStrLn s
-  if ping s then pong s else eval (splitOn " :" (clean s))
+  if ping s then pong s else eval (splitOn " :" (clean s)) ++ [nick]
  where
    forever a = a >> forever a
+   nick = drop 1 . head . splitOn "!~"
    clean = drop 1 . dropWhile(/= '#') . drop 1
    ping x = "PING :" `isPrefixOf` x
    pong x = write "PONG" (':' : drop 6 x)
