@@ -28,7 +28,7 @@ main :: IO()
 main = bracket Main.connect disconnect loop
   where
     disconnect = hClose . Main.socket
-    loop st = runReaderT run st
+    loop = runReaderT run
 
 connect :: IO Bot
 connect = notify $ do
@@ -46,17 +46,15 @@ connect = notify $ do
   hSetBuffering handle NoBuffering
   return (Bot handle clock)
  where
-   notify a = bracket_
+   notify = bracket_
      (printf "Connecting to %s..." server >> hFlush stdout)
      (putStrLn "Done.")
-     a
 
 run :: Net()
 run = do
   write "NICK" nick
   write "USER" (nick ++ " 0 * :hnng")
-  forM_ channels $ \channel -> do
-    write "JOIN" channel
+  forM_ channels $ \channel -> write "JOIN" channel
   asks Main.socket >>= Main.listen
 
 write :: String -> String -> Net()
@@ -68,7 +66,7 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
-eval :: [[Char]] -> Net()
+eval :: [String] -> Net()
 eval [] = return ()
 eval (_:[]) = return ()
 eval (nick:channel:text:[])
@@ -89,7 +87,7 @@ eval (_:_:_) = return ()
 
 quit :: String -> String -> Net()
 quit n c
-  | n == "PixeLInc"    = write "QUIT" ":Heck off" >> io (exitWith ExitSuccess)
+  | n == "PixeLInc"    = write "QUIT" ":Heck off" >> io exitSuccess
   | n == "godlyelixir" = privmsg c "pike pike pike"
   | otherwise          = privmsg c "Fuck off retard"
 
@@ -97,13 +95,13 @@ privmsg :: String -> String -> Net()
 privmsg c s = write "PRIVMSG" ("#" ++ c ++ " :" ++ s)
 
 containsIgnoreCase :: String -> String -> Bool
-containsIgnoreCase s word = isInfixOf (map toLower word) (map toLower s)
+containsIgnoreCase s word = map toLower word `isInfixOf` map toLower s
 
 listen :: Handle -> Net()
 listen h = forever $ do
   s <- init `fmap` io (hGetLine h)
   io $ putStrLn s
-  if ping s then pong s else eval ([nick(s)] ++ (splitOn " :" (clean s)))
+  if ping s then pong s else eval (nick s : splitOn " :" (clean s))
  where
    forever a = a >> forever a
    nick s = drop 1 (head(splitOn "!~" s))
