@@ -20,7 +20,11 @@ nick = "hnng"
 
 channels = ["#y32", "#ar1a"]
 
-data Bot = Bot { socket :: Handle, startTime :: UTCTime }
+data Bot =
+  Bot
+    { socket :: Handle
+    , startTime :: UTCTime
+    }
 
 type Net = ReaderT Bot IO
 
@@ -31,24 +35,27 @@ main = bracket Main.connect disconnect loop
     loop = runReaderT run
 
 connect :: IO Bot
-connect = notify $ do
-  clock <- getCurrentTime
-  let hints = defaultHints { addrSocketType = Stream }
-  addr:_ <- getAddrInfo (Just hints) (Just server) (Just port)
-
-  printf "\nConnection Starting: %s : %s\n" server port
-
-  sock <- Network.Socket.socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-  Network.Socket.connect sock (addrAddress addr)
-  printf "Connected.\n"
-  handle <- socketToHandle sock ReadWriteMode
-
-  hSetBuffering handle NoBuffering
-  return (Bot handle clock)
- where
-   notify = bracket_
-     (printf "Connecting to %s..." server >> hFlush stdout)
-     (putStrLn "Done.")
+connect =
+  notify $ do
+    clock <- getCurrentTime
+    let hints = defaultHints {addrSocketType = Stream}
+    addr:_ <- getAddrInfo (Just hints) (Just server) (Just port)
+    printf "\nConnection Starting: %s : %s\n" server port
+    sock <-
+      Network.Socket.socket
+        (addrFamily addr)
+        (addrSocketType addr)
+        (addrProtocol addr)
+    Network.Socket.connect sock (addrAddress addr)
+    printf "Connected.\n"
+    handle <- socketToHandle sock ReadWriteMode
+    hSetBuffering handle NoBuffering
+    return (Bot handle clock)
+  where
+    notify =
+      bracket_
+        (printf "Connecting to %s..." server >> hFlush stdout)
+        (putStrLn "Done.")
 
 run :: Net()
 run = do
@@ -87,9 +94,9 @@ eval (_:_:_) = return ()
 
 quit :: String -> String -> Net()
 quit n c
-  | n == "PixeLInc"    = write "QUIT" ":Heck off" >> io exitSuccess
+  | n == "PixeLInc" = write "QUIT" ":Heck off" >> io exitSuccess
   | n == "godlyelixir" = privmsg c "pike pike pike"
-  | otherwise          = privmsg c "Fuck off retard"
+  | otherwise = privmsg c "Fuck off retard"
 
 privmsg :: String -> String -> Net()
 privmsg c s = write "PRIVMSG" ("#" ++ c ++ " :" ++ s)
@@ -98,16 +105,19 @@ containsIgnoreCase :: String -> String -> Bool
 containsIgnoreCase s word = map toLower word `isInfixOf` map toLower s
 
 listen :: Handle -> Net()
-listen h = forever $ do
-  s <- init `fmap` io (hGetLine h)
-  io $ putStrLn s
-  if ping s then pong s else eval (nick s : splitOn " :" (clean s))
- where
-   forever a = a >> forever a
-   nick s = drop 1 (head(splitOn "!~" s))
-   clean = drop 1 . dropWhile(/= '#') . drop 1
-   ping x = "PING :" `isPrefixOf` x
-   pong x = write "PONG" (':' : drop 6 x)
+listen h =
+  forever $ do
+    s <- init `fmap` io (hGetLine h)
+    io $ putStrLn s
+    if ping s
+      then pong s
+      else eval (nick s : splitOn " :" (clean s))
+  where
+    forever a = a >> forever a
+    nick s = drop 1 (head (splitOn "!~" s))
+    clean = drop 1 . dropWhile (/= '#') . drop 1
+    ping x = "PING :" `isPrefixOf` x
+    pong x = write "PONG" (':' : drop 6 x)
 
 uptime :: Net String
 uptime = do
@@ -117,11 +127,16 @@ uptime = do
 
 pretty :: NominalDiffTime -> String
 pretty td =
-  unwords $ map (uncurry (++) . first show) $
-  if null diffs then [(0,"s")] else diffs
-  where merge (tot,acc) (sec,typ) = let (sec',tot') = divMod tot sec
-                                    in (tot',(sec',typ):acc)
-        metrics = [(86400,"d"),(3600,"h"),(60,"m"),(1,"s")]
-        diffs = filter ((/= 0) . fst) $ reverse $ snd $
-          foldl' merge (round (realToFrac td),[]) metrics
-
+  unwords $
+  map (uncurry (++) . first show) $
+  if null diffs
+    then [(0, "s")]
+    else diffs
+  where
+    merge (tot, acc) (sec, typ) =
+      let (sec', tot') = divMod tot sec
+       in (tot', (sec', typ) : acc)
+    metrics = [(86400, "d"), (3600, "h"), (60, "m"), (1, "s")]
+    diffs =
+      filter ((/= 0) . fst) $
+      reverse $ snd $ foldl' merge (round (realToFrac td), []) metrics
