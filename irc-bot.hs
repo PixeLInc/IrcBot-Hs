@@ -75,8 +75,8 @@ io = liftIO
 
 eval :: [String] -> Net()
 eval [] = return ()
-eval (_:[]) = return ()
-eval (nick:channel:text:[])
+eval [_] = return ()
+eval [nick, channel, text]
   | "!quit" `isPrefixOf` text = quit nick channel
   | "!uptime" `isPrefixOf` text = uptime >>= privmsg channel
   | "!say " `isPrefixOf` text = privmsg channel (drop 5 text)
@@ -113,7 +113,6 @@ listen h =
       then pong s
       else eval (nick s : splitOn " :" (clean s))
   where
-    forever a = a >> forever a
     nick s = drop 1 (head (splitOn "!~" s))
     clean = drop 1 . dropWhile (/= '#') . drop 1
     ping x = "PING :" `isPrefixOf` x
