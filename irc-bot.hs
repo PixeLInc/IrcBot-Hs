@@ -86,7 +86,9 @@ eval [nick, channel, text]
   | text `containsIgnoreCase` "nigga toilet" = privmsg channel "NIGGA TOILET"
   | text `containsIgnoreCase` "thanos car" = privmsg channel "THANOS CAR"
   | text `containsIgnoreCase` "COCKS" = privmsg channel "DICKS."
-  | text `containsIgnoreCase` "gay" = privmsg channel "gay"
+  | text `containsIgnoreCase` "traps" = privmsg channel "traps are not gay"
+  | text `containsIgnoreCase` "maddy" = privmsg channel "maddy is SO gay"
+  | text `containsIgnoreCase` "gay" = privmsg channel "gay, except traps"
   | otherwise = return ()
 eval (_:_:_) = return ()
 -- makeshift "on join event"
